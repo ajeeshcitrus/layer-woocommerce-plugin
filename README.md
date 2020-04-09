@@ -4,8 +4,8 @@ Layer plugin for WooCommerce integration
 
 Compatibility:
 
-WooCommerce : Version 4.0.1 +
-WordPress : Version 5.4 +
+WooCommerce : Version 4.0.1 + <br>
+WordPress : Version 5.4 + <br>
 PHP: Version 7.0 +
 
 
