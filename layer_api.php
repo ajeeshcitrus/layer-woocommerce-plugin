@@ -4,7 +4,7 @@ Class LayerApi{
 
 
     const BASE_URL_SANDBOX = "https://sandbox-icp-api.bankopen.co/api";
-    const BASE_URL_UAT = "https://icp-api.bankopen.co";
+    const BASE_URL_UAT = "https://icp-api.bankopen.co/api";
 
     public function __construct($env,$access_key,$secret_key){
 
@@ -92,7 +92,17 @@ Class LayerApi{
 
         $time_stamp = time();
         unset($body['udf']);
-        $token_string = $time_stamp.strtoupper($method).json_encode($body);
+
+        if(empty($body)){
+
+            $token_string = $time_stamp.strtoupper($method);
+
+        } else {
+
+            $token_string = $time_stamp.strtoupper($method).json_encode($body);
+
+        }
+
         $token = hash_hmac("sha256",$token_string,$this->secret_key);
 
         return [
@@ -160,6 +170,7 @@ Class LayerApi{
 
 
     function handle_http_response($response){
+
 
         try {
 

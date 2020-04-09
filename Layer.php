@@ -67,7 +67,7 @@ function layer_init_gateway_class() {
             } else {
 
                 $this->access_key = $this->get_option( 'api_key');
-                $this->secret_key = $this->get_option( 'api_secret' );
+                $this->secret_key = $this->get_option( 'secret_key' );
             }
 
             add_action('woocommerce_api_layer_callback', array($this, 'process_layer_response'));
@@ -138,7 +138,7 @@ function layer_init_gateway_class() {
 
             if( $this->settings['sandbox'] != "yes"){
 
-                wp_enqueue_script( 'layer_js', 'https://icp.bankopen.co/v1',"","",false);
+                wp_enqueue_script( 'layer_js', 'https://icp.bankopen.co/layer',"","",false);
 
             } else {
 
@@ -185,7 +185,6 @@ function layer_init_gateway_class() {
                     'woocommerce_order_created_at'  => $order->get_date_created()->date("Y-m-d H:i:s"),
                 ]
             ]);
-
 
             if(isset($layer_payment_token_data['error'])){
                 wc_add_notice(  'Payment error. ' . $layer_payment_token_data['error'],'error' );
