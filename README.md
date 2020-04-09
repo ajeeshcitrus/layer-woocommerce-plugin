@@ -21,8 +21,10 @@ Installation instructions:
 
 
 <table>
-  <tr><td><img src="http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.30.45-PM.png"</td></tr>
-  <tr><td>http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.30.45-PM.png</td></tr>
+  <tr><td><img src="http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.30.52-PM.png"</td></tr>
+  <tr><td><img src="http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.32.00-PM.png"</td></tr>
+  <tr><td><img src="http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.30.52-PM.png"</td></tr>
+  <tr><td><img src="http://13.235.18.65:8003/wp-content/uploads/2020/04/Screenshot-2020-04-09-at-12.30.52-PM.png"</td></tr>
 
 </table>
 
