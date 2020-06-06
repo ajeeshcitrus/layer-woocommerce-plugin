@@ -29,6 +29,65 @@ function layer_add_gateway_class( $gateways ) {
 add_action( 'plugins_loaded', 'layer_init_gateway_class' );
 
 
+register_activation_hook( __FILE__, 'layer_activation_check' );
+
+
+function layer_activation_check(){
+
+    try{
+
+        $php_version = phpversion();
+        global $wp_version;
+        $wc_plugin_details = [];
+
+        if($php_version < (int)7){
+
+            throw new Exception("Layer Payments only supports PHP 7+");
+        }
+
+        if ( !class_exists( 'woocommerce' ) ){
+
+            throw new Exception("Layer Payments requires WooCommerce to be installed and activated");
+
+        } else {
+
+            if(defined('WC_PLUGIN_FILE')){
+
+                $wc_plugin_details = get_plugin_data(WC_PLUGIN_FILE);
+
+            } else {
+
+                $wc_plugin_details = get_plugin_data(WP_PLUGIN_DIR.'/woocommerce/woocommerc.php');
+
+            }
+
+            if(isset($wc_plugin_details['Version']) && !empty($wc_plugin_details['Version'])){
+
+                if($wc_plugin_details['Version'] < (int)4.0){
+
+                    throw new Exception("Layer Payments only supports Woocommerce 4.2+");
+
+                }
+            } else {
+
+                throw new Exception("Unable to determine Woocommerce version");
+
+            }
+        }
+
+        if($wp_version < (int)5){
+
+            throw new Exception("Layer Payments only supports Wordpress 5+");
+        }
+
+    }catch (Exception $exception){
+
+        die($exception->getMessage());
+    }
+
+    return false;
+}
+
 
 function layer_init_gateway_class() {
 
@@ -45,7 +104,7 @@ function layer_init_gateway_class() {
             $this->icon = '';
             $this->has_fields = false;
             $this->method_title = 'Layer Payment Gateway';
-            $this->method_description = 'Layer';
+            $this->method_description = 'Layer Payment Gateway from Open';
 
             $this->supports = array(
                 'products'
@@ -55,7 +114,7 @@ function layer_init_gateway_class() {
 
             $this->init_settings();
             $this->title = $this->get_option( 'title' );
-            $this->description = $this->get_option( 'description' );
+            $this->description = $this->get_option( 'description');
             $this->enabled = $this->get_option( 'enabled' );
             $this->sandbox = 'yes' === $this->get_option( 'sandbox' );
 
@@ -91,16 +150,15 @@ function layer_init_gateway_class() {
                 'title' => array(
                     'title'       => 'Title',
                     'type'        => 'text',
-                    'description' => 'This controls the title which the user sees during checkout.',
+                    'description' => 'Layer payment gateway',
                     'default'     => 'Layer (CC/DC/NB/UPI)',
-                    'desc_tip'    => true,
                 ),
-                'description' => array(
+                /*'description' => array(
                     'title'       => 'Description',
                     'type'        => 'textarea',
-                    'description' => 'This controls the description which the user sees during checkout.',
+                    'description' => 'Description in checkout',
                     'default'     => 'Pay with our super cool gateway',
-                ),
+                ),*/
                 'sandbox' => array(
                     'title'       => 'Sandbox',
                     'label'       => 'Enable Sandbox Mode',
@@ -138,11 +196,11 @@ function layer_init_gateway_class() {
 
             if( $this->settings['sandbox'] != "yes"){
 
-                wp_enqueue_script( 'layer_js', 'https://icp.bankopen.co/layer',"","",false);
+                wp_enqueue_script( 'layer_js', 'https://payments.open.money/layer',"","",false);
 
             } else {
 
-                wp_enqueue_script( 'layer_js', 'https://sandbox-icp.bankopen.co/layer',"","",false);
+                wp_enqueue_script( 'layer_js', 'https://sandbox-payments.open.money/layer',"","",false);
 
             }
 
@@ -154,11 +212,7 @@ function layer_init_gateway_class() {
 
         public function validate_fields(){
 
-            if( empty( $_POST[ 'billing_first_name' ]) ) {
-                wc_add_notice(  'First name is required!', 'error' );
-                return false;
-            }
-            return true;
+           return true;
 
         }
 
@@ -171,6 +225,17 @@ function layer_init_gateway_class() {
 
             $env = $this->settings['sandbox'];
             if($env != "yes"){  $env = "live"; }
+
+            if(empty($this->access_key)){
+                wc_add_notice(  'Plugin error. Access Key is empty.',"error");
+                return;
+            }
+
+            if(empty($this->secret_key)){
+                wc_add_notice(  'Plugin error. Secret Key is empty',"error");
+                return;
+            }
+
             $layer_api = new LayerApi($env,$this->access_key,$this->secret_key);
 
             $layer_payment_token_data = $layer_api->create_payment_token([
@@ -188,13 +253,20 @@ function layer_init_gateway_class() {
 
             if(isset($layer_payment_token_data['error'])){
                 wc_add_notice(  'Payment error. ' . $layer_payment_token_data['error'],'error' );
-                return;
+                return NULL;
+            }
+
+            if(!isset($layer_payment_token_data["id"]) || empty($layer_payment_token_data["id"])){
+
+                wc_add_notice(  'Payment error. ' . 'Layer token ID cannot be empty','error' );
+                return NULL;
             }
 
             $woocommerce->session->set("layer_payment_token_id",$layer_payment_token_data["id"]);
 
             $args = [
-                'key' => $order->get_order_key()
+                'key' => $order->get_order_key(),
+                'layer_payment_token_id' => $layer_payment_token_data["id"]
             ];
 
             return array(
@@ -206,13 +278,39 @@ function layer_init_gateway_class() {
 
         public function process_payment_view($order_id){
 
+            $is_retry = 0;
+
+            if(isset($_GET['retry']) && $_GET['retry'] == "1"){
+
+                wc_print_notice("Payment Failed! Retry your payment by clicking on Pay Now","error");
+                $is_retry = 1;
+            }
+
             global $woocommerce;
             $order = wc_get_order( $order_id );
+            $layer_payment_token_id = NULL;
 
 
             $env = $this->settings['sandbox'];
             if($env != "yes"){  $env = "live"; }
             $layer_api = new LayerApi($env,$this->access_key,$this->secret_key);
+
+            if(empty($woocommerce->session->get("layer_payment_token_id"))){
+
+                $layer_payment_token_id = $woocommerce->session->get("layer_payment_token_id");
+
+            } else {
+
+                $layer_payment_token_id = $_GET['layer_payment_token_id'];
+            }
+
+            $layer_payment_token_id = $woocommerce->session->get("layer_payment_token_id");
+
+            if(empty($layer_payment_token_id)){
+
+                wc_print_notice("Invalid session. Unable to proceed. E66", "error");
+                return NULL;
+            }
 
             try{
 
@@ -240,13 +338,13 @@ function layer_init_gateway_class() {
 
                     $jsdata = array(
                         'payment_token_id' => $payment_token_data['id'],
-                        'accesskey' => $this->access_key
+                        'accesskey' => $this->access_key,
+                        'retry' => $is_retry,
                     );
 
 
                     wp_localize_script('layer_checkout_js','layer_params',$jsdata);
 
-                    echo "<button class='float-right' id='LayerPayNow'>Pay Now</button>";
 
                     $hash = $this->create_hash(array(
                         'layer_pay_token_id'    => $payment_token_data['id'],
@@ -254,32 +352,46 @@ function layer_init_gateway_class() {
                         'woo_order_id'    => $order_id,
                     ));
 
+                    $args = [
+                        'key' => $order->get_order_key(),
+                        'layer_payment_token_id' => $layer_payment_token_id,
+                        'retry' => true
+                    ];
+
                     echo " <form action='".get_site_url() . '?wc-api=layer_callback' ."' method='post' style='display: none' name='layer_payment_int_form'>
                                 <input type='hidden' name='layer_pay_token_id' value='".$payment_token_data['id']."'>
                                 <input type='hidden' name='woo_order_id' value='".$order_id."'>
                                 <input type='hidden' name='layer_order_amount' value='".$payment_token_data['amount']."'>
                                 <input type='hidden' id='layer_payment_id' name='layer_payment_id' value=''>
+                                <input type='hidden' id='fallback_url' name='fallback_url' value='".add_query_arg($args, $order->get_checkout_payment_url(true))."'>
                                 <input type='hidden' name='hash' value='".$hash."'>
                             </form>";
+
+                    echo "<button class='float-right' id='LayerPayNow'>Pay Now</button>";
+
 
                 }
 
             } catch (Throwable $exception){
 
-                wc_print_notice($exception->getMessage(),"error");
-
-            } catch (Exception $exception){
-
-                wc_print_notice($exception->getMessage(),"error");
+                wc_print_notice($exception->getMessage() ." E12","error");
 
             }
-
         }
 
 
         public function process_layer_response(){
 
             global $woocommerce;
+
+            $fallback_url = $_POST['fallback_url'];
+
+
+            if(!isset($_POST['layer_payment_id']) || empty($_POST['layer_payment_id'])){
+
+                wp_redirect($fallback_url);
+                return NULL ;
+            }
 
             try {
 
@@ -309,11 +421,11 @@ function layer_init_gateway_class() {
                                 'data' => $data
                             ]));
 
-                            throw new Exception("Layer: an error occurred");
+                            throw new Exception("Layer: an error occurred E14");
 
                         }
 
-                        if(!empty($payment_data) && isset($payment_data['id'])){
+                        if(isset($payment_data['id']) && !empty($payment_data)){
 
 
                             if($payment_data['payment_token']['id'] != $data['layer_pay_token_id']){
@@ -358,18 +470,21 @@ function layer_init_gateway_class() {
                                 case $this->payment::status_failed:
                                 case $this->payment::status_cancelled:
 
-                                    $order->add_order_note( "Payment Failed");
-                                    $order->add_order_note( "Payment ID ". $payment_data['id']);
-                                    $order->update_status('failed');
-                                    break;
+                                    $order->add_order_note( "Payment ID ". $payment_data['id'] ." Failed");
+                                    wp_redirect($fallback_url);
+                                    exit;
+
+                                break;
 
                                 case $this->payment::status_late_authorized:
                                 case $this->payment::status_pending:
                                 default:
 
-                                    $order->add_order_note( "Payment Pending");
-                                    $order->add_order_note( "Payment ID ". $payment_data['id']);
-                                    break;
+                                    $order->add_order_note( "Payment ID ". $payment_data['id'] ." is Pending");
+                                    wp_redirect($fallback_url);
+                                    exit;
+
+                                break;
 
                             }
 
@@ -382,7 +497,7 @@ function layer_init_gateway_class() {
                                 'data' => $data
                             ]));
 
-                            throw new Exception("invalid payment data received");
+                            throw new Exception("invalid payment data received E98");
                         }
 
                     } else {
@@ -399,14 +514,10 @@ function layer_init_gateway_class() {
             } catch (Throwable $exception){
 
                 $order->add_order_note( "Layer: an error occurred " . $exception->getMessage());
-                wc_add_notice(  'Please try again.', 'error' );
-                wp_redirect(wc_get_checkout_url());
+                wc_add_notice(  'Please try again. E26', 'error' );
+                wp_redirect($fallback_url);
 
-            } catch (Exception $exception){
 
-                $order->add_order_note( "Layer: an error occurred " . $exception->getMessage());
-                wc_add_notice(  'Please try again.', 'error' );
-                wp_redirect(wc_get_checkout_url());
             }
 
             wp_redirect($order->get_checkout_order_received_url());

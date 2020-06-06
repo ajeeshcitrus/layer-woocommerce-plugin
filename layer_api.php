@@ -47,6 +47,11 @@ Class LayerApi{
 
     public function get_payment_token($payment_token_id){
 
+        if(empty($payment_token_id)){
+
+            throw new Exception("payment_token_id cannot be empty");
+        }
+
         try {
 
             return $this->http_get("payment_token/".$payment_token_id);
@@ -67,6 +72,11 @@ Class LayerApi{
     }
 
     public function get_payment_details($payment_id){
+
+        if(empty($payment_id)){
+
+            throw new Exception("payment_id cannot be empty");
+        }
 
         try {
 
@@ -171,6 +181,8 @@ Class LayerApi{
 
     function handle_http_response($response){
 
+        $response = (array)$response;
+
 
         try {
 
@@ -235,14 +247,14 @@ Class LayerApi{
         } catch (Throwable $exception){
 
             return [
-                "error" => "unknown api error occurred failed",
+                "error" => "and error occurred E68",
                 "error_data" => $exception->getMessage(),
             ];
 
         } catch (Exception $exception){
 
             return [
-                "error" => "unknown api error occurred failed",
+                "error" => "unknown error occurred failed E32",
                 "error_data" => $exception->getMessage(),
             ];
         }

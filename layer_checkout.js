@@ -1,7 +1,13 @@
 if(document.getElementById("LayerPayNow")){
 
-    window.onload = function(){
-        trigger_layer()
+    if(layer_params.retry === "0"){
+
+        window.onload = function(){
+            trigger_layer()
+        }
+    } else {
+
+        document.getElementById("LayerPayNow").focus()
     }
 
     document.getElementById("LayerPayNow").onclick = function () {
@@ -23,9 +29,9 @@ function trigger_layer() {
             console.log(response)
             if(response !== null || response.length > 0 ){
 
-                if(response.paymentId !== undefined){
+                if(response.payment_id !== undefined){
 
-                    document.getElementById('layer_payment_id').value = response.paymentId;
+                    document.getElementById('layer_payment_id').value = response.payment_id;
 
                 }
 
