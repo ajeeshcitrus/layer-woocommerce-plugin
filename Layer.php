@@ -4,7 +4,7 @@
  * Plugin Name: Layer Payment Gateway
  * Plugin URI: https://open.money/
  * Description: Open's Layer Payment Gateway integration for WooCommerce
- * Version: 1.0.1
+ * Version: 1.0.3
  * Author: Openers
  * Author URI: https://open.money/
 */
@@ -238,12 +238,21 @@ function layer_init_gateway_class() {
 
             $layer_api = new LayerApi($env,$this->access_key,$this->secret_key);
 
+            $contact_number = (int)$order->get_billing_phone();
+            $email_id = $order->get_billing_email();
+
+            if(strlen($contact_number) > 10){
+
+                $contact_number = NULL;
+                $email_id = NULL;
+            }
+
             $layer_payment_token_data = $layer_api->create_payment_token([
                 'amount' => $order->get_total(),
                 'currency' => 'INR',
                 'name'  => $order->get_formatted_billing_full_name(),
-                'email_id' => $order->get_billing_email(),
-                'contact_number' => $order->get_billing_phone(),
+                'email_id' => $email_id,
+                'contact_number' => (string)$contact_number,
                 'udf'   => [
                     'woocommerce_order_id'  => $order->get_id(),
                     'woocommerce_order_key'  => $order->get_order_key(),
@@ -358,7 +367,7 @@ function layer_init_gateway_class() {
                         'retry' => true
                     ];
 
-                    echo " <form action='".get_site_url() . '?wc-api=layer_callback' ."' method='post' style='display: none' name='layer_payment_int_form'>
+                    echo " <form action='".get_site_url() . '/?wc-api=layer_callback' ."' method='post' style='display: none' name='layer_payment_int_form'>
                                 <input type='hidden' name='layer_pay_token_id' value='".$payment_token_data['id']."'>
                                 <input type='hidden' name='woo_order_id' value='".$order_id."'>
                                 <input type='hidden' name='layer_order_amount' value='".$payment_token_data['amount']."'>
