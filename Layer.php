@@ -320,7 +320,7 @@ function layer_init_gateway_class() {
                 if(!empty($payment_token_data)){
 
                     if(isset($layer_payment_token_data['error'])){
-                        wc_add_notice(  'E55 Payment error. ' . $payment_token_data['error'],'error' );
+                        wc_add_notice(  'E56 Payment error. ' . $payment_token_data['error'],'error' );
                         return;
                     }
 
