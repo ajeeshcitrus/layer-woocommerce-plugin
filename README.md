@@ -11,7 +11,7 @@ PHP: Version 7.0 +
 
 Installation instructions:
 
-1. Download the latest release - https://github.com/ajeeshcitrus/layer-woocommerce-plugin/releases/tag/1.0.1
+1. Download the latest release - https://github.com/ajeeshcitrus/layer-woocommerce-plugin/releases
 2. Login to the WordPress admin panel.
 3. Navigate to Plugins > Add New.
 4. Upload the zip file.
