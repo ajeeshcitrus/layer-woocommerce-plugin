@@ -260,10 +260,12 @@ function layer_init_gateway_class() {
                 ]
             ]);
 
+
             if(isset($layer_payment_token_data['error'])){
                 wc_add_notice(  'E55 Payment error. ' . $layer_payment_token_data['error'],'error' );
                 return NULL;
             }
+
 
             if(!isset($layer_payment_token_data["id"]) || empty($layer_payment_token_data["id"])){
 

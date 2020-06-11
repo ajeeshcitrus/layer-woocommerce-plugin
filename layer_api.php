@@ -150,7 +150,9 @@ Class LayerApi{
         $response = wp_remote_post($url,[
             'body'  => $data,
             'headers'  => $header,
+            'timeout' => 45
         ]);
+
 
         return $this->handle_http_response($response);
     }
@@ -172,6 +174,7 @@ Class LayerApi{
 
         $response = wp_remote_get($url,[
             'headers'  => $header,
+            'timeout' => 45
         ]);
 
         return $this->handle_http_response($response);
